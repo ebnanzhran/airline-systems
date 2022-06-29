@@ -3,6 +3,11 @@ require('dotenv').config();
 const PORT = process.env.PORT || 3050;
 const ioServer = require('socket.io')(PORT);
 const { faker } = require('@faker-js/faker');
+const uuid = require('uuid').v4;
+
+const queue = {
+  flights: {}
+};
 
 const tookOff = ioServer.of('/airline');
 
@@ -10,21 +15,27 @@ tookOff.on('connection', (socket) => {
   socket.on('new-flight', () => {
     tookOff.emit('new-flight');
   });
-  socket.on('took-off', flightDetails2);
+  socket.on('took-off', flightTookOff);
 });
 
 ioServer.on('connection', (socket) => {
-  socket.on('new-flight', () => {
-    flightDetails1();
-    ioServer.emit('new-flight');
+  socket.on('new-flight', (payload) => {
+    flightNewFlight();
+    const id = uuid();
+    queue.flights[id] = payload;
+    ioServer.emit('new-flight', payload);
   });
-  socket.on('Arrived', flightDetails3);
+  socket.on('Arrived', flightArrived);
   socket.on('Arrived', () => {
     ioServer.emit('Arrived');
   });
+  socket.on('get-all', () => {
+    socket.emit('flight', queue.flights);
+    queue.flights = {};
+  });
 });
 
-function flightDetails1() {
+function flightNewFlight() {
   let flightDetails01 = {
     Flight: {
       event: 'new-flight',
@@ -39,7 +50,7 @@ function flightDetails1() {
   };
   console.log(flightDetails01);
 }
-function flightDetails2() {
+function flightTookOff() {
   let flightDetails02 = {
     Flight: {
       event: 'took_off',
@@ -54,7 +65,7 @@ function flightDetails2() {
   };
   console.log(flightDetails02);
 }
-function flightDetails3() {
+function flightArrived() {
   let flightDetails03 = {
     Flight: {
       event: 'arrived',
